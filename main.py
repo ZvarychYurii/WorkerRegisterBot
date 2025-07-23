@@ -131,19 +131,9 @@ class WorkerRegistrationBot:
 
     async def get_name(self, update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
         """Collect user's name"""
-        name = update.message.text.strip()
-        
-        if len(name) < 2 or not all(char.isalpha() or char.isspace() for char in name):
-            error_text = self.get_text(context, "invalid_name")
-            await update.message.reply_text(error_text)
-            return NAME
-        
-        context.user_data['name'] = name
-        
-        name_accepted_text = self.get_text(context, "name_accepted", name=name)
-        age_text = self.get_text(context, "age")
-        
-        await update.message.reply_text(f"{name_accepted_text}\n\n{age_text}")
+        context.user_data['name'] = update.message.text.strip()
+        lang = context.user_data.get('lang', 'ru')
+        await update.message.reply_text(TEXTS[lang]["age"])
         return AGE
 
     async def get_age(self, update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
