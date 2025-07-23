@@ -40,7 +40,7 @@ The bot uses a conversation-based state machine pattern implemented through Tele
 
 ### 4. Input Validation
 - **Age Validation**: Range checking (16-70 years by default)
-- **Phone Validation**: Multiple Russian phone number formats supported
+- **Phone Validation**: Ukrainian (+380XXXXXXXXX) and Russian (+7XXXXXXXXXX) phone number formats supported
 - **Name Validation**: Minimum length requirements with configurable limits
 
 ## Data Flow

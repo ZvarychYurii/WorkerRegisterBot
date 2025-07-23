@@ -20,12 +20,9 @@ def validate_age(age_text: str) -> bool:
 def validate_phone(phone: str) -> bool:
     """
     Validate phone number format.
-    Accepts various formats:
-    - +7 (999) 123-45-67
-    - +79991234567
-    - 8 (999) 123-45-67
-    - 89991234567
-    - 79991234567
+    Accepts Ukrainian and Russian formats:
+    - +380XXXXXXXXX (Ukrainian)
+    - +7XXXXXXXXXX (Russian)
     
     Args:
         phone: Phone number string
@@ -36,11 +33,10 @@ def validate_phone(phone: str) -> bool:
     # Remove all non-digit characters except +
     cleaned = re.sub(r'[^\d+]', '', phone)
     
-    # Check for valid Russian phone number patterns
+    # Check for valid Ukrainian and Russian phone number patterns
     patterns = [
-        r'^\+7\d{10}$',  # +7XXXXXXXXXX
-        r'^8\d{10}$',    # 8XXXXXXXXXX
-        r'^7\d{10}$',    # 7XXXXXXXXXX
+        r'^\+380\d{9}$',  # +380XXXXXXXXX (Ukrainian)
+        r'^\+7\d{10}$',   # +7XXXXXXXXXX (Russian)
     ]
     
     for pattern in patterns:
