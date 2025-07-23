@@ -1,9 +1,9 @@
 import os
 import asyncio
 import logging
-from telegram import Update, ReplyKeyboardRemove
+from telegram import Update, ReplyKeyboardRemove, InlineKeyboardButton, InlineKeyboardMarkup
 from telegram.ext import (
-    Application, CommandHandler, MessageHandler,
+    Application, CommandHandler, MessageHandler, CallbackQueryHandler,
     ConversationHandler, ContextTypes, filters
 )
 from google_sheets import GoogleSheetsManager
@@ -18,7 +18,71 @@ logging.basicConfig(
 logger = logging.getLogger(__name__)
 
 # Conversation states
-NAME, AGE, PHONE, CONFIRM = range(4)
+LANG_CHOICE, NAME, AGE, PHONE, CONFIRM = range(5)
+
+# Multi-language text definitions
+TEXTS = {
+    "ua": {
+        "welcome": "👋 Вітаємо! Я допоможу вам зареєструватися в нашій системі.",
+        "name": "Введіть ваше повне ім'я:",
+        "age": "Скільки вам років? (від 16 до 70):",
+        "phone": "Введіть номер телефону:\n🇺🇦 +380661234567\n🇷🇺 +79991234567",
+        "invalid_phone": "❌ Невірний формат номера.\nПриклади:\n🇺🇦 +380661234567\n🇷🇺 +79991234567\nСпробуйте ще раз:",
+        "invalid_age": "❌ Вік має бути числом від 16 до 70 років. Спробуйте ще раз:",
+        "invalid_name": "❌ Ім'я має містити мінімум 2 символи та тільки букви. Спробуйте ще раз:",
+        "age_accepted": "✅ Вік прийнято!",
+        "name_accepted": "✅ Чудово, {name}!",
+        "confirm": "📋 Будь ласка, перевірте введені дані:\n\n👤 Ім'я: {name}\n🎂 Вік: {age} років\n📞 Телефон: {phone}\n\nВсе вірно? Надішліть 'так' для підтвердження або 'ні' для повторного введення.",
+        "confirm_yes": ["так", "yes", "y", "+"],
+        "confirm_no": ["ні", "no", "n", "-"],
+        "success": "✅ Реєстрація успішно завершена!\n\nВаші дані збережено в системі. Найближчим часом з вами зв'яжеться наш HR-менеджер.\n\nДякуємо за реєстрацію! 🎉",
+        "error": "❌ Сталася помилка при збереженні даних. Будь ласка, спробуйте пізніше або зверніться до адміністратора.",
+        "restart": "🔄 Добре, почнемо спочатку.\nВведіть ваше повне ім'я:",
+        "confirm_help": "❓ Будь ласка, дайте відповідь 'так' для підтвердження або 'ні' для повторного введення:",
+        "cancel": "❌ Реєстрацію скасовано.\nЯкщо передумаєте, використовуйте команду /start для початку реєстрації.",
+        "help": "🤖 <b>Бот реєстрації співробітників</b>\n\n<b>Доступні команди:</b>\n/start - Почати реєстрацію\n/cancel - Скасувати поточну реєстрацію\n/help - Показати це повідомлення\n\n<b>Процес реєстрації:</b>\n1️⃣ Оберіть мову\n2️⃣ Введіть повне ім'я\n3️⃣ Вкажіть вік (16-70 років)\n4️⃣ Введіть номер телефону\n5️⃣ Підтвердьте дані\n\n❓ Якщо у вас виникли питання, зверніться до адміністратора."
+    },
+    "ru": {
+        "welcome": "👋 Добро пожаловать! Я помогу вам зарегистрироваться в нашей системе.",
+        "name": "Введите ваше полное имя:",
+        "age": "Сколько вам лет? (от 16 до 70):",
+        "phone": "Введите номер телефона:\n🇺🇦 +380661234567\n🇷🇺 +79991234567",
+        "invalid_phone": "❌ Некорректный формат номера.\nПримеры:\n🇺🇦 +380661234567\n🇷🇺 +79991234567\nПопробуйте снова:",
+        "invalid_age": "❌ Возраст должен быть числом от 16 до 70 лет. Попробуйте еще раз:",
+        "invalid_name": "❌ Имя должно содержать минимум 2 символа и только буквы. Попробуйте еще раз:",
+        "age_accepted": "✅ Возраст принят!",
+        "name_accepted": "✅ Отлично, {name}!",
+        "confirm": "📋 Пожалуйста, проверьте введенные данные:\n\n👤 Имя: {name}\n🎂 Возраст: {age} лет\n📞 Телефон: {phone}\n\nВсе верно? Отправьте 'да' для подтверждения или 'нет' для повторного ввода.",
+        "confirm_yes": ["да", "yes", "y", "+"],
+        "confirm_no": ["нет", "no", "n", "-"],
+        "success": "✅ Регистрация успешно завершена!\n\nВаши данные сохранены в системе. В ближайшее время с вами свяжется наш HR-менеджер.\n\nСпасибо за регистрацию! 🎉",
+        "error": "❌ Произошла ошибка при сохранении данных. Пожалуйста, попробуйте позже или обратитесь к администратору.",
+        "restart": "🔄 Хорошо, давайте начнем заново.\nВведите ваше полное имя:",
+        "confirm_help": "❓ Пожалуйста, ответьте 'да' для подтверждения или 'нет' для повторного ввода:",
+        "cancel": "❌ Регистрация отменена.\nЕсли передумаете, используйте команду /start для начала регистрации.",
+        "help": "🤖 <b>Бот регистрации сотрудников</b>\n\n<b>Доступные команды:</b>\n/start - Начать регистрацию\n/cancel - Отменить текущую регистрацию\n/help - Показать это сообщение\n\n<b>Процесс регистрации:</b>\n1️⃣ Выберите язык\n2️⃣ Введите полное имя\n3️⃣ Укажите возраст (16-70 лет)\n4️⃣ Введите номер телефона\n5️⃣ Подтвердите данные\n\n❓ Если у вас возникли вопросы, обратитесь к администратору."
+    },
+    "en": {
+        "welcome": "👋 Welcome! I'll help you register in our system.",
+        "name": "Please enter your full name:",
+        "age": "How old are you? (16 to 70 years):",
+        "phone": "Enter your phone number:\n🇺🇦 +380661234567\n🇷🇺 +79991234567",
+        "invalid_phone": "❌ Invalid phone format.\nExamples:\n🇺🇦 +380661234567\n🇷🇺 +79991234567\nTry again:",
+        "invalid_age": "❌ Age must be a number between 16 and 70. Try again:",
+        "invalid_name": "❌ Name must contain at least 2 characters and only letters. Try again:",
+        "age_accepted": "✅ Age accepted!",
+        "name_accepted": "✅ Great, {name}!",
+        "confirm": "📋 Please verify your information:\n\n👤 Name: {name}\n🎂 Age: {age} years\n📞 Phone: {phone}\n\nIs everything correct? Send 'yes' to confirm or 'no' to re-enter.",
+        "confirm_yes": ["yes", "y", "+", "да", "так"],
+        "confirm_no": ["no", "n", "-", "нет", "ні"],
+        "success": "✅ Registration completed successfully!\n\nYour information has been saved. Our HR manager will contact you soon.\n\nThank you for registering! 🎉",
+        "error": "❌ An error occurred while saving data. Please try again later or contact the administrator.",
+        "restart": "🔄 Alright, let's start over.\nEnter your full name:",
+        "confirm_help": "❓ Please answer 'yes' to confirm or 'no' to re-enter:",
+        "cancel": "❌ Registration cancelled.\nIf you change your mind, use /start to begin registration.",
+        "help": "🤖 <b>Worker Registration Bot</b>\n\n<b>Available commands:</b>\n/start - Start registration\n/cancel - Cancel current registration\n/help - Show this message\n\n<b>Registration process:</b>\n1️⃣ Choose language\n2️⃣ Enter full name\n3️⃣ Specify age (16-70 years)\n4️⃣ Enter phone number\n5️⃣ Confirm information\n\n❓ If you have questions, contact the administrator."
+    }
+}
 
 class WorkerRegistrationBot:
     def __init__(self):
@@ -26,41 +90,60 @@ class WorkerRegistrationBot:
         self.sheets_manager = GoogleSheetsManager()
         
     async def start(self, update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
-        """Start the registration process"""
+        """Start the registration process with language selection"""
         user = update.effective_user
         logger.info(f"User {user.id} started registration")
         
-        welcome_message = (
-            "👋 Добро пожаловать в систему регистрации сотрудников!\n\n"
-            "Я помогу вам зарегистрироваться в нашей системе. "
-            "Процесс займет всего несколько минут.\n\n"
-            "Для начала, пожалуйста, введите ваше полное имя:"
-        )
+        keyboard = [
+            [
+                InlineKeyboardButton("🇺🇦 Українська", callback_data='ua'),
+                InlineKeyboardButton("🇬🇧 English", callback_data='en'),
+                InlineKeyboardButton("🇷🇺 Русский", callback_data='ru')
+            ]
+        ]
+        reply_markup = InlineKeyboardMarkup(keyboard)
         
-        await update.message.reply_text(welcome_message)
+        await update.message.reply_text(
+            "🌐 Оберіть мову / Choose language / Выберите язык:",
+            reply_markup=reply_markup
+        )
+        return LANG_CHOICE
+    
+    async def lang_choice(self, update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
+        """Handle language selection"""
+        query = update.callback_query
+        await query.answer()
+        
+        lang = query.data
+        context.user_data['lang'] = lang
+        
+        welcome_text = TEXTS[lang]["welcome"]
+        name_text = TEXTS[lang]["name"]
+        
+        await query.edit_message_text(f"{welcome_text}\n\n{name_text}")
         return NAME
+    
+    def get_text(self, context: ContextTypes.DEFAULT_TYPE, key: str, **kwargs) -> str:
+        """Get localized text"""
+        lang = context.user_data.get('lang', 'ru')  # Default to Russian
+        text = TEXTS[lang].get(key, TEXTS['ru'][key])  # Fallback to Russian
+        return text.format(**kwargs) if kwargs else text
 
     async def get_name(self, update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
         """Collect user's name"""
         name = update.message.text.strip()
         
-        if len(name) < 2:
-            await update.message.reply_text(
-                "❌ Имя должно содержать минимум 2 символа. Попробуйте еще раз:"
-            )
-            return NAME
-            
-        if not all(char.isalpha() or char.isspace() for char in name):
-            await update.message.reply_text(
-                "❌ Имя должно содержать только буквы. Попробуйте еще раз:"
-            )
+        if len(name) < 2 or not all(char.isalpha() or char.isspace() for char in name):
+            error_text = self.get_text(context, "invalid_name")
+            await update.message.reply_text(error_text)
             return NAME
         
         context.user_data['name'] = name
-        await update.message.reply_text(
-            f"✅ Отлично, {name}!\n\n"
-            "Теперь укажите ваш возраст (от 16 до 70 лет):"
-        )
+        
+        name_accepted_text = self.get_text(context, "name_accepted", name=name)
+        age_text = self.get_text(context, "age")
+        
+        await update.message.reply_text(f"{name_accepted_text}\n\n{age_text}")
         return AGE
 
     async def get_age(self, update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
@@ -68,19 +151,16 @@ class WorkerRegistrationBot:
         age_text = update.message.text.strip()
         
         if not validate_age(age_text):
-            await update.message.reply_text(
-                "❌ Возраст должен быть числом от 16 до 70 лет. "
-                "Попробуйте еще раз:"
-            )
+            error_text = self.get_text(context, "invalid_age")
+            await update.message.reply_text(error_text)
             return AGE
         
         context.user_data['age'] = age_text
-        await update.message.reply_text(
-            "✅ Возраст принят!\n\n"
-            "Теперь введите ваш номер телефона:\n"
-            "🇺🇦 +380661234567\n"
-            "🇷🇺 +79991234567"
-        )
+        
+        age_accepted_text = self.get_text(context, "age_accepted")
+        phone_text = self.get_text(context, "phone")
+        
+        await update.message.reply_text(f"{age_accepted_text}\n\n{phone_text}")
         return PHONE
 
     async def get_phone(self, update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
@@ -88,35 +168,31 @@ class WorkerRegistrationBot:
         phone = update.message.text.strip()
         
         if not validate_phone(phone):
-            await update.message.reply_text(
-                "❌ Некорректный формат номера.\n"
-                "Примеры:\n"
-                "🇺🇦 +380661234567\n"
-                "🇷🇺 +79991234567\n"
-                "Попробуйте снова:"
-            )
+            error_text = self.get_text(context, "invalid_phone")
+            await update.message.reply_text(error_text)
             return PHONE
         
         context.user_data['phone'] = phone
         
         # Show confirmation
         data = context.user_data
-        confirmation_message = (
-            "📋 Пожалуйста, проверьте введенные данные:\n\n"
-            f"👤 Имя: {data['name']}\n"
-            f"🎂 Возраст: {data['age']} лет\n"
-            f"📞 Телефон: {data['phone']}\n\n"
-            "Все верно? Отправьте 'да' для подтверждения или 'нет' для повторного ввода."
-        )
+        confirmation_text = self.get_text(context, "confirm", 
+                                        name=data['name'], 
+                                        age=data['age'], 
+                                        phone=data['phone'])
         
-        await update.message.reply_text(confirmation_message)
+        await update.message.reply_text(confirmation_text)
         return CONFIRM
 
     async def confirm_registration(self, update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
         """Confirm and save registration data"""
         response = update.message.text.strip().lower()
+        lang = context.user_data.get('lang', 'ru')
         
-        if response in ['да', 'yes', 'y', '+']:
+        confirm_yes = TEXTS[lang]["confirm_yes"]
+        confirm_no = TEXTS[lang]["confirm_no"]
+        
+        if response in confirm_yes:
             try:
                 data = context.user_data
                 user = update.effective_user
@@ -135,46 +211,38 @@ class WorkerRegistrationBot:
                 success = await self.sheets_manager.add_registration(registration_data)
                 
                 if success:
-                    await update.message.reply_text(
-                        "✅ Регистрация успешно завершена!\n\n"
-                        "Ваши данные сохранены в системе. "
-                        "В ближайшее время с вами свяжется наш HR-менеджер.\n\n"
-                        "Спасибо за регистрацию! 🎉",
-                        reply_markup=ReplyKeyboardRemove()
-                    )
+                    success_text = self.get_text(context, "success")
+                    await update.message.reply_text(success_text, reply_markup=ReplyKeyboardRemove())
                     
                     # Notify admin
                     await self.notify_admin(context, registration_data, user)
                     
                 else:
-                    await update.message.reply_text(
-                        "❌ Произошла ошибка при сохранении данных. "
-                        "Пожалуйста, попробуйте позже или обратитесь к администратору."
-                    )
+                    error_text = self.get_text(context, "error")
+                    await update.message.reply_text(error_text)
                 
             except Exception as e:
                 logger.error(f"Error during registration confirmation: {e}")
-                await update.message.reply_text(
-                    "❌ Произошла техническая ошибка. "
-                    "Пожалуйста, попробуйте позже."
-                )
+                error_text = self.get_text(context, "error")
+                await update.message.reply_text(error_text)
             
             # Clear user data
             context.user_data.clear()
             return ConversationHandler.END
             
-        elif response in ['нет', 'no', 'n', '-']:
-            await update.message.reply_text(
-                "🔄 Хорошо, давайте начнем заново.\n"
-                "Введите ваше полное имя:"
-            )
+        elif response in confirm_no:
+            restart_text = self.get_text(context, "restart")
+            await update.message.reply_text(restart_text)
+            
+            # Keep language but clear other data
+            saved_lang = context.user_data.get('lang', 'ru')
             context.user_data.clear()
+            context.user_data['lang'] = saved_lang
             return NAME
             
         else:
-            await update.message.reply_text(
-                "❓ Пожалуйста, ответьте 'да' для подтверждения или 'нет' для повторного ввода:"
-            )
+            help_text = self.get_text(context, "confirm_help")
+            await update.message.reply_text(help_text)
             return CONFIRM
 
     async def notify_admin(self, context: ContextTypes.DEFAULT_TYPE, data: dict, user):
@@ -204,31 +272,14 @@ class WorkerRegistrationBot:
 
     async def cancel(self, update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
         """Cancel registration process"""
-        await update.message.reply_text(
-            "❌ Регистрация отменена.\n"
-            "Если передумаете, используйте команду /start для начала регистрации.",
-            reply_markup=ReplyKeyboardRemove()
-        )
+        cancel_text = self.get_text(context, "cancel")
+        await update.message.reply_text(cancel_text, reply_markup=ReplyKeyboardRemove())
         context.user_data.clear()
         return ConversationHandler.END
 
     async def help_command(self, update: Update, context: ContextTypes.DEFAULT_TYPE):
         """Show help information"""
-        help_text = (
-            "🤖 <b>Бот регистрации сотрудников</b>\n\n"
-            "<b>Доступные команды:</b>\n"
-            "/start - Начать регистрацию\n"
-            "/register - Начать регистрацию (альтернатива)\n"
-            "/cancel - Отменить текущую регистрацию\n"
-            "/help - Показать это сообщение\n\n"
-            "<b>Процесс регистрации:</b>\n"
-            "1️⃣ Введите полное имя\n"
-            "2️⃣ Укажите возраст (16-70 лет)\n"
-            "3️⃣ Введите номер телефона\n"
-            "4️⃣ Подтвердите данные\n\n"
-            "❓ Если у вас возникли вопросы, обратитесь к администратору."
-        )
-        
+        help_text = self.get_text(context, "help")
         await update.message.reply_text(help_text, parse_mode='HTML')
 
     async def admin_stats(self, update: Update, context: ContextTypes.DEFAULT_TYPE):
@@ -267,6 +318,7 @@ class WorkerRegistrationBot:
                 CommandHandler("register", self.start)
             ],
             states={
+                LANG_CHOICE: [CallbackQueryHandler(self.lang_choice)],
                 NAME: [MessageHandler(filters.TEXT & ~filters.COMMAND, self.get_name)],
                 AGE: [MessageHandler(filters.TEXT & ~filters.COMMAND, self.get_age)],
                 PHONE: [MessageHandler(filters.TEXT & ~filters.COMMAND, self.get_phone)],

@@ -13,7 +13,7 @@ Preferred communication style: Simple, everyday language.
 The application follows a modular architecture with clear separation of concerns:
 
 ### Core Components
-- **main.py**: Entry point containing the bot logic and conversation handlers
+- **main.py**: Entry point containing the bot logic and conversation handlers with multi-language support
 - **config.py**: Centralized configuration management with environment variable validation
 - **google_sheets.py**: Google Sheets integration for data persistence
 - **validators.py**: Input validation utilities for age and phone number formats
@@ -26,7 +26,8 @@ The bot uses a conversation-based state machine pattern implemented through Tele
 ### 1. Bot Framework Integration
 - **Technology**: python-telegram-bot library
 - **Purpose**: Handles Telegram API interactions and conversation flow management
-- **States**: NAME, AGE, PHONE, CONFIRM - representing different stages of the registration process
+- **States**: LANG_CHOICE, NAME, AGE, PHONE, CONFIRM - representing different stages of the registration process
+- **Multi-language Support**: Ukrainian, English, and Russian language options with inline keyboard selection
 
 ### 2. Configuration Management
 - **Centralized Config Class**: Manages all environment variables and validation
@@ -46,12 +47,13 @@ The bot uses a conversation-based state machine pattern implemented through Tele
 ## Data Flow
 
 1. **User Initiation**: User starts bot with /start command
-2. **Sequential Collection**: Bot collects name → age → phone number
-3. **Validation**: Each input is validated before proceeding to next step
-4. **Confirmation**: User reviews collected data before final submission
-5. **Persistence**: Valid data is stored in Google Sheets
-6. **Notification**: Admin receives notification about new registration
-7. **Completion**: User receives confirmation message
+2. **Language Selection**: User chooses from Ukrainian, English, or Russian via inline keyboard
+3. **Sequential Collection**: Bot collects name → age → phone number in selected language
+4. **Validation**: Each input is validated before proceeding to next step
+5. **Confirmation**: User reviews collected data before final submission
+6. **Persistence**: Valid data is stored in Google Sheets
+7. **Notification**: Admin receives notification about new registration
+8. **Completion**: User receives confirmation message in their chosen language
 
 ## External Dependencies
 
