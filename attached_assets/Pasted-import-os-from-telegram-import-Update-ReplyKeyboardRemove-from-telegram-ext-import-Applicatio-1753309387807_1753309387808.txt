@@ -1,0 +1,83 @@
+import os
+from telegram import Update, ReplyKeyboardRemove
+from telegram.ext import (
+    Application, CommandHandler, MessageHandler,
+    ConversationHandler, ContextTypes, filters
+)
+
+# Состояния опроса
+NAME, AGE, PHONE = range(3)
+
+# Айди чата администратора: временно None, заполним позже
+ADMIN_CHAT_ID = int(os.environ.get("ADMIN_CHAT_ID", "0"))
+
+async def start(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
+    await update.message.reply_text("Здравствуйте! Введите своё имя:")
+    return NAME
+
+async def get_name(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
+    context.user_data['name'] = update.message.text.strip()
+    await update.message.reply_text("Сколько вам лет?")
+    return AGE
+
+async def get_age(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
+    context.user_data['age'] = update.message.text.strip()
+    await update.message.reply_text("Введите номер телефона (можно с + и кодом страны):")
+    return PHONE
+
+async def get_phone(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
+    context.user_data['phone'] = update.message.text.strip()
+    data = context.user_data
+
+    # Подтверждение пользователю
+    await update.message.reply_text(
+        f"Спасибо! Ваши данные:\n"
+        f"Имя: {data['name']}\n"
+        f"Возраст: {data['age']}\n"
+        f"Телефон: {data['phone']}",
+        reply_markup=ReplyKeyboardRemove()
+    )
+
+    # Отправка админу (если установлен chat_id)
+    if ADMIN_CHAT_ID:
+        msg = (
+            "🆕 Новая регистрация:\n"
+            f"Имя: {data['name']}\n"
+            f"Возраст: {data['age']}\n"
+            f"Телефон: {data['phone']}\n"
+            f"Telegram user: @{update.effective_user.username or 'нет'} (id {update.effective_user.id})"
+        )
+        await context.bot.send_message(chat_id=ADMIN_CHAT_ID, text=msg)
+
+    # TODO: здесь можно добавить запись в Google Sheet / файл / базу
+    return ConversationHandler.END
+
+async def cancel(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
+    await update.message.reply_text("Регистрация отменена.", reply_markup=ReplyKeyboardRemove())
+    return ConversationHandler.END
+
+async def help_cmd(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    await update.message.reply_text("Команды: /start (регистрация), /cancel (отмена).")
+
+def main():
+    token = os.environ["BOT_TOKEN"]
+    app = Application.builder().token(token).build()
+
+    conv_handler = ConversationHandler(
+        entry_points=[CommandHandler("start", start), CommandHandler("register", start)],
+        states={
+            NAME: [MessageHandler(filters.TEXT & ~filters.COMMAND, get_name)],
+            AGE: [MessageHandler(filters.TEXT & ~filters.COMMAND, get_age)],
+            PHONE: [MessageHandler(filters.TEXT & ~filters.COMMAND, get_phone)],
+        },
+        fallbacks=[CommandHandler("cancel", cancel)],
+    )
+
+    app.add_handler(conv_handler)
+    app.add_handler(CommandHandler("help", help_cmd))
+
+    print("Bot is running...")
+    app.run_polling()
+
+if __name__ == "__main__":
+    main()
