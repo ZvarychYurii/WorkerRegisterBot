@@ -250,29 +250,29 @@ class WorkerRegistrationBot:
             return CONFIRM
 
     async def notify_admin(self, context: ContextTypes.DEFAULT_TYPE, data: dict, user):
-        """Send notification to admin about new registration"""
-        if not self.config.ADMIN_CHAT_ID:
-            logger.warning("Admin chat ID not configured")
-            return
-            
+    """Send notification to all admins about new registration"""
+    if not self.config.ADMIN_CHAT_IDS:
+        logger.warning("Admin chat IDs not configured")
+        return
+
+    admin_message = (
+        "🆕 <b>Нова реєстрація співробітника</b>\n\n"
+        f"👤 <b>Ім’я:</b> {data['name']}\n"
+        f"🎂 <b>Вік:</b> {data['age']} років\n"
+        f"📞 <b>Телефон:</b> {data['phone']}\n"
+        f"📱 <b>Telegram:</b> @{data['telegram_username']} (ID: {data['telegram_id']})\n"
+        f"📅 <b>Дата реєстрації:</b> {data.get('registration_date', 'Сьогодні')}"
+    )
+
+    for admin_id in self.config.ADMIN_CHAT_IDS:
         try:
-            admin_message = (
-                "🆕 <b>Новая регистрация сотрудника</b>\n\n"
-                f"👤 <b>Имя:</b> {data['name']}\n"
-                f"🎂 <b>Возраст:</b> {data['age']} лет\n"
-                f"📞 <b>Телефон:</b> {data['phone']}\n"
-                f"📱 <b>Telegram:</b> @{data['telegram_username']} (ID: {data['telegram_id']})\n"
-                f"📅 <b>Дата регистрации:</b> {data.get('registration_date', 'Сейчас')}"
-            )
-            
             await context.bot.send_message(
-                chat_id=self.config.ADMIN_CHAT_ID,
+                chat_id=admin_id,
                 text=admin_message,
                 parse_mode='HTML'
             )
-            
         except Exception as e:
-            logger.error(f"Failed to notify admin: {e}")
+            logger.warning(f"❌ Не вдалося відправити повідомлення адміну {admin_id}: {e}")
 
     async def cancel(self, update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
         """Cancel registration process"""
