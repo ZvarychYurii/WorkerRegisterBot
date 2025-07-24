@@ -1,5 +1,5 @@
 import os
-from typing import Optional
+from typing import Optional, List
 
 class Config:
     """Configuration class for the bot"""
@@ -10,12 +10,9 @@ class Config:
         if not self.BOT_TOKEN:
             raise ValueError("BOT_TOKEN environment variable is required")
         
-        # Admin chat ID for notifications
-        admin_chat_id = os.getenv("ADMIN_CHAT_ID", "0")
-        try:
-            self.ADMIN_CHAT_ID = int(admin_chat_id) if admin_chat_id != "0" else None
-        except ValueError:
-            self.ADMIN_CHAT_ID = None
+        # Admin chat IDs (список админов)
+        admin_ids_str = os.getenv("ADMIN_CHAT_IDS", "")
+        self.ADMIN_CHAT_IDS = [int(id.strip()) for id in admin_ids_str.split(",") if id.strip().isdigit()]
         
         # Google Sheets configuration
         self.GOOGLE_SHEETS_CREDENTIALS = os.getenv("GOOGLE_SHEETS_CREDENTIALS")
@@ -52,13 +49,13 @@ class Config:
     @property
     def is_admin_configured(self) -> bool:
         """Check if admin notifications are configured"""
-        return bool(self.ADMIN_CHAT_ID)
+        return len(self.ADMIN_CHAT_IDS) > 0
     
     def get_env_status(self) -> dict:
         """Get status of environment configuration"""
         return {
             "bot_token_configured": bool(self.BOT_TOKEN),
-            "admin_chat_configured": bool(self.ADMIN_CHAT_ID),
+            "admin_chat_configured": self.is_admin_configured,
             "google_sheets_configured": self.is_sheets_configured,
             "admin_email_configured": bool(self.ADMIN_EMAIL),
         }
