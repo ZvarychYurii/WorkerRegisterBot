@@ -70,7 +70,7 @@ TEXTS = {
     "en": {
         "welcome": "👋 Welcome! I'll help you register in our system.",
         "name": "Please enter your full name:",
-        "age": "How old are you? (16 to 70 years):",
+        "age": "How old are you? (16 to 40 years):",
         "phone": "Enter your phone number:\n🇺🇦 +380661234567",
         "invalid_phone": "❌ Invalid phone format.\nExamples:\n🇺🇦 +380661234567\nTry again:",
         "invalid_age": "❌ Age must be a number between 16 and 40. Try again:",
