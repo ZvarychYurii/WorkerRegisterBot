@@ -250,11 +250,11 @@ class WorkerRegistrationBot:
             return CONFIRM
 
     async def notify_admin(self, context: ContextTypes.DEFAULT_TYPE, data: dict, user):
-        """Send notification to admin about new registration"""
-        if not self.config.ADMIN_CHAT_ID:
-            logger.warning("Admin chat ID not configured")
+        """Send notification to all admins about new registration"""
+        if not self.config.ADMIN_CHAT_IDS:
+            logger.warning("Admin chat IDs not configured")
             return
-            
+
         try:
             admin_message = (
                 "🆕 <b>Новая регистрация сотрудника</b>\n\n"
@@ -264,15 +264,17 @@ class WorkerRegistrationBot:
                 f"📱 <b>Telegram:</b> @{data['telegram_username']} (ID: {data['telegram_id']})\n"
                 f"📅 <b>Дата регистрации:</b> {data.get('registration_date', 'Сейчас')}"
             )
-            
-            await context.bot.send_message(
-                chat_id=self.config.ADMIN_CHAT_ID,
-                text=admin_message,
-                parse_mode='HTML'
-            )
-            
+
+            for admin_id in self.config.ADMIN_CHAT_IDS:
+                await context.bot.send_message(
+                    chat_id=admin_id,
+                    text=admin_message,
+                    parse_mode='HTML'
+                )
+
         except Exception as e:
-            logger.error(f"Failed to notify admin: {e}")
+            logger.error(f"Failed to notify admins: {e}")
+
 
     async def cancel(self, update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
         """Cancel registration process"""
