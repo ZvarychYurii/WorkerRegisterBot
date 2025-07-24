@@ -21,4 +21,9 @@ author = "agent"
 
 [[workflows.workflow.tasks]]
 task = "shell.exec"
-args = "pip install python-telegram-bot gspread google-auth && python main.py"
+args = "python main.py"
+waitForPort = 8080
+
+[[ports]]
+localPort = 8080
+externalPort = 80

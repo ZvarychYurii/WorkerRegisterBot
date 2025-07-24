@@ -1,26 +1,24 @@
-    import os
-    import asyncio
-    import logging
-    from telegram import Update, ReplyKeyboardRemove, InlineKeyboardButton, InlineKeyboardMarkup
-    from telegram.ext import (
-        Application, CommandHandler, MessageHandler, CallbackQueryHandler,
-        ConversationHandler, ContextTypes, filters
-    )
-    from google_sheets import GoogleSheetsManager
-    from validators import validate_age, validate_phone
-    from config import Config
+import os
+import asyncio
+import logging
+from telegram import Update, ReplyKeyboardRemove, InlineKeyboardButton, InlineKeyboardMarkup
+from telegram.ext import (
+    Application, CommandHandler, MessageHandler, CallbackQueryHandler,
+    ConversationHandler, ContextTypes, filters
+)
+from google_sheets import GoogleSheetsManager
+from validators import validate_age, validate_phone, validate_name
+from config import Config
 
-    from keep_alive import keep_alive  # импорт в конце
+from keep_alive import keep_alive  # импорт в конце
 
-    # Запускаем веб-сервер
-    keep_alive()
+# Запускаем веб-сервер
+keep_alive()
 
-    # Configure logging
-    logging.basicConfig(
-        format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
-        level=logging.INFO
-    )
-
+# Configure logging
+logging.basicConfig(
+    format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
+    level=logging.INFO
 )
 logger = logging.getLogger(__name__)
 
@@ -138,9 +136,18 @@ class WorkerRegistrationBot:
 
     async def get_name(self, update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
         """Collect user's name"""
-        context.user_data['name'] = update.message.text.strip()
-        lang = context.user_data.get('lang', 'ru')
-        await update.message.reply_text(TEXTS[lang]["age"])
+        name = update.message.text.strip()
+        
+        if not validate_name(name):
+            error_text = self.get_text(context, "invalid_name")
+            await update.message.reply_text(error_text)
+            return NAME
+        
+        context.user_data['name'] = name
+        name_accepted_text = self.get_text(context, "name_accepted", name=name)
+        age_text = self.get_text(context, "age")
+        
+        await update.message.reply_text(f"{name_accepted_text}\n\n{age_text}")
         return AGE
 
     async def get_age(self, update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
