@@ -8,4 +8,5 @@ dependencies = [
     "gspread>=6.2.1",
     "python-telegram-bot==20.8",
     "telegram>=0.0.1",
+    "Flask>=2.3.0"            
 ]

@@ -1,19 +1,26 @@
-import os
-import asyncio
-import logging
-from telegram import Update, ReplyKeyboardRemove, InlineKeyboardButton, InlineKeyboardMarkup
-from telegram.ext import (
-    Application, CommandHandler, MessageHandler, CallbackQueryHandler,
-    ConversationHandler, ContextTypes, filters
-)
-from google_sheets import GoogleSheetsManager
-from validators import validate_age, validate_phone
-from config import Config
+    import os
+    import asyncio
+    import logging
+    from telegram import Update, ReplyKeyboardRemove, InlineKeyboardButton, InlineKeyboardMarkup
+    from telegram.ext import (
+        Application, CommandHandler, MessageHandler, CallbackQueryHandler,
+        ConversationHandler, ContextTypes, filters
+    )
+    from google_sheets import GoogleSheetsManager
+    from validators import validate_age, validate_phone
+    from config import Config
 
-# Configure logging
-logging.basicConfig(
-    format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
-    level=logging.INFO
+    from keep_alive import keep_alive  # импорт в конце
+
+    # Запускаем веб-сервер
+    keep_alive()
+
+    # Configure logging
+    logging.basicConfig(
+        format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
+        level=logging.INFO
+    )
+
 )
 logger = logging.getLogger(__name__)
 
