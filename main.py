@@ -11,11 +11,17 @@ from validators import validate_age, validate_phone, validate_name
 from config import Config
 
 from keep_alive import keep_alive  # импорт в конце
-from keep_alive import keep_alive
 
 # Запускаем веб-сервер
 keep_alive()
-@@ -25,339 +24,157 @@
+
+# Configure logging
+logging.basicConfig(
+    format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
+    level=logging.INFO
+)
+logger = logging.getLogger(__name__)
+
 # Conversation states
 LANG_CHOICE, NAME, AGE, PHONE, CONFIRM = range(5)
 
@@ -39,7 +45,7 @@ TEXTS = {
         "restart": "🔄 Добре, почнемо спочатку.\nВведіть ваше повне ім'я:",
         "confirm_help": "❓ Будь ласка, дайте відповідь 'так' для підтвердження або 'ні' для повторного введення:",
         "cancel": "❌ Реєстрацію скасовано.\nЯкщо передумаєте, використовуйте команду /start для початку реєстрації.",
-        "help": "🤖 <b>Бот реєстрації співробітників</b>\n\n<b>Доступні команди:</b>\n/start - Почати реєстрацію\n/cancel - Скасувати поточну реєстрацію\n/help - Показати це повідомлення\n\n<b>Процес реєстрації:</b>\n1️⃣ Оберіть мову\n2️⃣ Введіть повне ім'я\n3️⃣ Вкажіть вік (16-70 років)\n4️⃣ Введіть номер телефону\n5️⃣ Підтвердьте дані\n\n❓ Якщо у вас виникли питання, зверніться до адміністратора."
+        "help": "🤖 <b>Бот реєстрації співробітників</b>\n\n<b>Доступні команди:</b>\n/start - Почати реєстрацію\n/cancel - Скасувати поточну реєстрацію\n/help - Показати це повідомлення\n\n<b>Процес реєстрації:</b>\n1️⃣ Оберіть мову\n2️⃣ Введіть повне ім'я\n3️⃣ Вкажіть вік (16-40 років)\n4️⃣ Введіть номер телефону\n5️⃣ Підтвердьте дані\n\n❓ Якщо у вас виникли питання, зверніться до адміністратора."
     },
     "ru": {
         "welcome": "👋 Добро пожаловать! Я помогу вам зарегистрироваться в нашей системе.",
@@ -59,12 +65,12 @@ TEXTS = {
         "restart": "🔄 Хорошо, давайте начнем заново.\nВведите ваше полное имя:",
         "confirm_help": "❓ Пожалуйста, ответьте 'да' для подтверждения или 'нет' для повторного ввода:",
         "cancel": "❌ Регистрация отменена.\nЕсли передумаете, используйте команду /start для начала регистрации.",
-        "help": "🤖 <b>Бот регистрации сотрудников</b>\n\n<b>Доступные команды:</b>\n/start - Начать регистрацию\n/cancel - Отменить текущую регистрацию\n/help - Показать это сообщение\n\n<b>Процесс регистрации:</b>\n1️⃣ Выберите язык\n2️⃣ Введите полное имя\n3️⃣ Укажите возраст (16-70 лет)\n4️⃣ Введите номер телефона\n5️⃣ Подтвердите данные\n\n❓ Если у вас возникли вопросы, обратитесь к администратору."
+        "help": "🤖 <b>Бот регистрации сотрудников</b>\n\n<b>Доступные команды:</b>\n/start - Начать регистрацию\n/cancel - Отменить текущую регистрацию\n/help - Показать это сообщение\n\n<b>Процесс регистрации:</b>\n1️⃣ Выберите язык\n2️⃣ Введите полное имя\n3️⃣ Укажите возраст (16-40 лет)\n4️⃣ Введите номер телефона\n5️⃣ Подтвердите данные\n\n❓ Если у вас возникли вопросы, обратитесь к администратору."
     },
     "en": {
         "welcome": "👋 Welcome! I'll help you register in our system.",
         "name": "Please enter your full name:",
-        "age": "How old are you? (16 to 40 years):",
+        "age": "How old are you? (16 to 70 years):",
         "phone": "Enter your phone number:\n🇺🇦 +380661234567",
         "invalid_phone": "❌ Invalid phone format.\nExamples:\n🇺🇦 +380661234567\nTry again:",
         "invalid_age": "❌ Age must be a number between 16 and 40. Try again:",
@@ -82,15 +88,12 @@ TEXTS = {
         "help": "🤖 <b>Worker Registration Bot</b>\n\n<b>Available commands:</b>\n/start - Start registration\n/cancel - Cancel current registration\n/help - Show this message\n\n<b>Registration process:</b>\n1️⃣ Choose language\n2️⃣ Enter full name\n3️⃣ Specify age (16-70 years)\n4️⃣ Enter phone number\n5️⃣ Confirm information\n\n❓ If you have questions, contact the administrator."
     }
 }
-# Localization (UA, RU, EN) – тот же словарь TEXTS, как у тебя
-from texts import TEXTS  # предполагается, что ты вынес словарь TEXTS отдельно
 
 class WorkerRegistrationBot:
     def __init__(self):
         self.config = Config()
         self.sheets_manager = GoogleSheetsManager()
         
-
     async def start(self, update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
         """Start the registration process with language selection"""
         user = update.effective_user
@@ -105,20 +108,12 @@ class WorkerRegistrationBot:
         ]
         reply_markup = InlineKeyboardMarkup(keyboard)
         
-        keyboard = [[
-            InlineKeyboardButton("\ud83c\uddfa\ud83c\udde6 \u0423\u043a\u0440\u0430\u0457\u043d\u0441\u044c\u043a\u0430", callback_data='ua'),
-            InlineKeyboardButton("\ud83c\uddec\ud83c\udde7 English", callback_data='en'),
-            InlineKeyboardButton("\ud83c\uddf7\ud83c\uddfa \u0420\u0443\u0441\u0441\u043a\u0438\u0439", callback_data='ru')
-        ]]
         await update.message.reply_text(
             "🌐 Оберіть мову / Choose language / Выберите язык:",
             reply_markup=reply_markup
-            "\ud83c\udf10 Choose language / \u041e\u0431\u0435\u0440\u0456\u0442\u044c \u043c\u043e\u0432\u0443 / \u0412\u044b\u0431\u0435\u0440\u0438\u0442\u0435 \u044f\u0437\u044b\u043a:",
-            reply_markup=InlineKeyboardMarkup(keyboard)
         )
         return LANG_CHOICE
     
-
     async def lang_choice(self, update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
         """Handle language selection"""
         query = update.callback_query
@@ -131,7 +126,6 @@ class WorkerRegistrationBot:
         name_text = TEXTS[lang]["name"]
         
         await query.edit_message_text(f"{welcome_text}\n\n{name_text}")
-        await query.edit_message_text(f"{TEXTS[lang]['welcome']}\n\n{TEXTS[lang]['name']}")
         return NAME
     
     def get_text(self, context: ContextTypes.DEFAULT_TYPE, key: str, **kwargs) -> str:
@@ -140,10 +134,6 @@ class WorkerRegistrationBot:
         text = TEXTS[lang].get(key, TEXTS['ru'][key])  # Fallback to Russian
         return text.format(**kwargs) if kwargs else text
 
-    def get_text(self, context, key, **kwargs):
-        lang = context.user_data.get('lang', 'ru')
-        return TEXTS[lang][key].format(**kwargs) if kwargs else TEXTS[lang][key]
-
     async def get_name(self, update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
         """Collect user's name"""
         name = update.message.text.strip()
@@ -151,7 +141,6 @@ class WorkerRegistrationBot:
         if not validate_name(name):
             error_text = self.get_text(context, "invalid_name")
             await update.message.reply_text(error_text)
-            await update.message.reply_text(self.get_text(context, "invalid_name"))
             return NAME
         
         context.user_data['name'] = name
@@ -159,9 +148,6 @@ class WorkerRegistrationBot:
         age_text = self.get_text(context, "age")
         
         await update.message.reply_text(f"{name_accepted_text}\n\n{age_text}")
-        await update.message.reply_text(
-            f"{self.get_text(context, 'name_accepted', name=name)}\n\n{self.get_text(context, 'age')}"
-        )
         return AGE
 
     async def get_age(self, update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
@@ -171,9 +157,6 @@ class WorkerRegistrationBot:
         if not validate_age(age_text):
             error_text = self.get_text(context, "invalid_age")
             await update.message.reply_text(error_text)
-        age = update.message.text.strip()
-        if not validate_age(age):
-            await update.message.reply_text(self.get_text(context, "invalid_age"))
             return AGE
         
         context.user_data['age'] = age_text
@@ -182,10 +165,6 @@ class WorkerRegistrationBot:
         phone_text = self.get_text(context, "phone")
         
         await update.message.reply_text(f"{age_accepted_text}\n\n{phone_text}")
-        context.user_data['age'] = age
-        await update.message.reply_text(
-            f"{self.get_text(context, 'age_accepted')}\n\n{self.get_text(context, 'phone')}"
-        )
         return PHONE
 
     async def get_phone(self, update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
@@ -195,15 +174,11 @@ class WorkerRegistrationBot:
         if not validate_phone(phone):
             error_text = self.get_text(context, "invalid_phone")
             await update.message.reply_text(error_text)
-            await update.message.reply_text(self.get_text(context, "invalid_phone"))
             return PHONE
         
         context.user_data['phone'] = phone
         
         # Show confirmation
-        return await self.confirm(update, context)
-
-    async def confirm(self, update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
         data = context.user_data
         confirmation_text = self.get_text(context, "confirm", 
                                         name=data['name'], 
@@ -211,8 +186,6 @@ class WorkerRegistrationBot:
                                         phone=data['phone'])
         
         await update.message.reply_text(confirmation_text)
-        msg = self.get_text(context, "confirm", name=data['name'], age=data['age'], phone=data['phone'])
-        await update.message.reply_text(msg)
         return CONFIRM
 
     async def confirm_registration(self, update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
@@ -258,26 +231,6 @@ class WorkerRegistrationBot:
                 await update.message.reply_text(error_text)
             
             # Clear user data
-        yes_list = TEXTS[lang]['confirm_yes']
-        no_list = TEXTS[lang]['confirm_no']
-
-        if response in yes_list:
-            data = context.user_data
-            user = update.effective_user
-            reg_data = {
-                'name': data['name'],
-                'age': data['age'],
-                'phone': data['phone'],
-                'telegram_username': user.username or 'N/A',
-                'telegram_id': str(user.id),
-                'registration_date': None
-            }
-            success = await self.sheets_manager.add_registration(reg_data)
-            if success:
-                await update.message.reply_text(self.get_text(context, 'success'), reply_markup=ReplyKeyboardRemove())
-                await self.notify_admins(context, reg_data)
-            else:
-                await update.message.reply_text(self.get_text(context, 'error'))
             context.user_data.clear()
             return ConversationHandler.END
             
@@ -287,65 +240,44 @@ class WorkerRegistrationBot:
             
             # Keep language but clear other data
             saved_lang = context.user_data.get('lang', 'ru')
-
-        elif response in no_list:
-            lang = context.user_data.get('lang', 'ru')
             context.user_data.clear()
             context.user_data['lang'] = saved_lang
-            context.user_data['lang'] = lang
-            await update.message.reply_text(self.get_text(context, 'restart'))
             return NAME
             
-
         else:
             help_text = self.get_text(context, "confirm_help")
             await update.message.reply_text(help_text)
-            await update.message.reply_text(self.get_text(context, 'confirm_help'))
             return CONFIRM
 
-   async def notify_admin(self, context: ContextTypes.DEFAULT_TYPE, data: dict, user):
-    """Send notification to all admins about new registration"""
-    if not self.config.ADMIN_CHAT_IDS:
-        logger.warning("Admin chat IDs not configured")
-        return
-    async def notify_admins(self, context: ContextTypes.DEFAULT_TYPE, data: dict):
-        """Send notification to all admins about new registration"""
-        if not self.config.ADMIN_CHAT_IDS:
-            logger.warning("Admin chat IDs not configured")
+    async def notify_admin(self, context: ContextTypes.DEFAULT_TYPE, data: dict, user):
+        """Send notification to admin about new registration"""
+        if not self.config.ADMIN_CHAT_ID:
+            logger.warning("Admin chat ID not configured")
             return
-
-    try:
-        admin_message = (
-            "🆕 <b>Нова реєстрація співробітника</b>\n\n"
-            f"👤 <b>Ім'я:</b> {data['name']}\n"
-            f"🎂 <b>Вік:</b> {data['age']} років\n"
-            f"📞 <b>Телефон:</b> {data['phone']}\n"
-            f"📱 <b>Telegram:</b> @{data['telegram_username']} (ID: {data['telegram_id']})\n"
-            f"📅 <b>Дата реєстрації:</b> {data.get('registration_date', 'Сьогодні')}"
-        message = (
-            "\ud83d\udd0e <b>New Registration</b>\n\n"
-            f"\ud83d\udc64 <b>Name:</b> {data['name']}\n"
-            f"\ud83c\udf82 <b>Age:</b> {data['age']}\n"
-            f"\ud83d\udcde <b>Phone:</b> {data['phone']}\n"
-            f"\ud83d\udcf1 <b>Telegram:</b> @{data['telegram_username']} (ID: {data['telegram_id']})"
-        )
-
-        for admin_id in self.config.ADMIN_CHAT_IDS:
+            
+        try:
+            admin_message = (
+                "🆕 <b>Новая регистрация сотрудника</b>\n\n"
+                f"👤 <b>Имя:</b> {data['name']}\n"
+                f"🎂 <b>Возраст:</b> {data['age']} лет\n"
+                f"📞 <b>Телефон:</b> {data['phone']}\n"
+                f"📱 <b>Telegram:</b> @{data['telegram_username']} (ID: {data['telegram_id']})\n"
+                f"📅 <b>Дата регистрации:</b> {data.get('registration_date', 'Сейчас')}"
+            )
+            
             await context.bot.send_message(
-                chat_id=admin_id,
+                chat_id=self.config.ADMIN_CHAT_ID,
                 text=admin_message,
                 parse_mode='HTML'
             )
-
-    except Exception as e:
-        logger.error(f"Failed to notify admins: {e}")
-            await context.bot.send_message(chat_id=admin_id, text=message, parse_mode='HTML')
+            
+        except Exception as e:
+            logger.error(f"Failed to notify admin: {e}")
 
     async def cancel(self, update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
         """Cancel registration process"""
         cancel_text = self.get_text(context, "cancel")
         await update.message.reply_text(cancel_text, reply_markup=ReplyKeyboardRemove())
-        await update.message.reply_text(self.get_text(context, 'cancel'), reply_markup=ReplyKeyboardRemove())
         context.user_data.clear()
         return ConversationHandler.END
 
@@ -380,7 +312,6 @@ class WorkerRegistrationBot:
             await update.message.reply_text(
                 "❌ Ошибка при получении статистики."
             )
-        await update.message.reply_text(self.get_text(context, 'help'), parse_mode='HTML')
 
     def setup_handlers(self, app: Application):
         """Setup all bot handlers"""
@@ -390,7 +321,6 @@ class WorkerRegistrationBot:
                 CommandHandler("start", self.start),
                 CommandHandler("register", self.start)
             ],
-            entry_points=[CommandHandler("start", self.start)],
             states={
                 LANG_CHOICE: [CallbackQueryHandler(self.lang_choice)],
                 NAME: [MessageHandler(filters.TEXT & ~filters.COMMAND, self.get_name)],
@@ -399,7 +329,6 @@ class WorkerRegistrationBot:
                 CONFIRM: [MessageHandler(filters.TEXT & ~filters.COMMAND, self.confirm_registration)],
             },
             fallbacks=[CommandHandler("cancel", self.cancel)],
-            fallbacks=[CommandHandler("cancel", self.cancel)]
         )
         
         # Add handlers
@@ -428,11 +357,6 @@ def main():
     except Exception as e:
         logger.error(f"Failed to start bot: {e}")
         print(f"❌ Error starting bot: {e}")
-    bot = WorkerRegistrationBot()
-    app = Application.builder().token(bot.config.BOT_TOKEN).build()
-    bot.setup_handlers(app)
-    logger.info("Worker Bot запущен")
-    app.run_polling(drop_pending_updates=True)
 
 if __name__ == "__main__":
     main()
