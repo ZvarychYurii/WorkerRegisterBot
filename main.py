@@ -167,9 +167,32 @@ class WorkerRegistrationBot:
         await update.message.reply_text(f"{age_accepted_text}\n\n{phone_text}")
         return PHONE
 
-    async def get_phone(self, update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
-        """Collect user's phone number"""
-        phone = update.message.text.strip()
+   async def get_phone(self, update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
+    """Collect user's phone number"""
+    phone = update.message.text.strip()
+
+    if not validate_phone(phone):
+        error_text = self.get_text(context, "invalid_phone")
+        await update.message.reply_text(error_text)
+        return PHONE
+
+    # Получаем оба варианта номера
+    phone_data = format_phone_variants(phone)
+    context.user_data['phone'] = phone_data['international']
+    context.user_data['phone_local'] = phone_data['local']
+
+    # Подтверждение пользователю
+    data = context.user_data
+    confirmation_text = self.get_text(
+        context,
+        "confirm",
+        name=data['name'],
+        age=data['age'],
+        phone=f"{data['phone']} ({data['phone_local']})"
+    )
+
+    await update.message.reply_text(confirmation_text)
+    return CONFIRM
         
         if not validate_phone(phone):
             error_text = self.get_text(context, "invalid_phone")
