@@ -22,7 +22,7 @@ class Config:
         # Bot settings
         self.MAX_NAME_LENGTH = int(os.getenv("MAX_NAME_LENGTH", "50"))
         self.MIN_AGE = int(os.getenv("MIN_AGE", "16"))
-        self.MAX_AGE = int(os.getenv("MAX_AGE", "70"))
+        self.MAX_AGE = int(os.getenv("MAX_AGE", "40"))
         
         # Logging level
         self.LOG_LEVEL = os.getenv("LOG_LEVEL", "INFO").upper()
